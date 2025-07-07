@@ -24,6 +24,7 @@ An exciting bullet dodging survival game built with HTML5 Canvas and JavaScript.
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js (version 14 or higher)
 - npm or yarn
 
@@ -39,30 +40,36 @@ An exciting bullet dodging survival game built with HTML5 Canvas and JavaScript.
 ### Running the Game
 
 #### Development Mode
+
 ```bash
 npm run dev
 ```
+
 This will start a local development server. Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
 
 #### Production Build
+
 ```bash
 npm run build
 ```
+
 This creates an optimized production build in the `dist` folder.
 
 #### Preview Production Build
+
 ```bash
 npm run preview
 ```
+
 Preview the production build locally.
 
 ## 🎮 Game Controls
 
-| Key | Action |
-|-----|--------|
-| W / ↑ | Move Up |
-| S / ↓ | Move Down |
-| A / ← | Move Left |
+| Key   | Action     |
+| ----- | ---------- |
+| W / ↑ | Move Up    |
+| S / ↓ | Move Down  |
+| A / ← | Move Left  |
 | D / → | Move Right |
 
 ## 🛠️ Technical Details
@@ -88,6 +95,7 @@ The game is responsive and works on mobile devices, though desktop is recommende
 ## 🔧 Development
 
 The project structure:
+
 ```
 /
 ├── src/
