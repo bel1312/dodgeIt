@@ -69,7 +69,8 @@ body {
 }
 
 #score,
-#timer {
+#timer,
+#personalBest {
   background: rgba(0, 0, 0, 0.8);
   color: #00ff88;
   padding: 10px 20px;
@@ -78,6 +79,13 @@ body {
   font-size: 18px;
   border: 2px solid #00ff88;
   box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+#personalBest {
+  background: rgba(255, 215, 0, 0.1);
+  color: #ffd700;
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
 }
 
 #timer {
@@ -164,7 +172,8 @@ body {
   }
 
   #score,
-  #timer {
+  #timer,
+  #personalBest {
     font-size: 14px;
     padding: 8px 16px;
   }

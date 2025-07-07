@@ -1,6 +1,7 @@
 // Game state
 let gameState = "menu"; // 'menu', 'playing', 'gameOver'
 let score = 0;
+let personalBest = 0;
 let startTime = 0;
 let currentTime = 0;
 let animationId = null;
@@ -12,10 +13,12 @@ const ctx = canvas.getContext("2d");
 // UI elements
 const scoreElement = document.getElementById("score");
 const timerElement = document.getElementById("timer");
+const personalBestElement = document.getElementById("personalBest");
 const gameOverElement = document.getElementById("gameOver");
 const instructionsElement = document.getElementById("instructions");
 const finalScoreElement = document.getElementById("finalScore");
 const finalTimeElement = document.getElementById("finalTime");
+const gameOverBestElement = document.getElementById("gameOverBest");
 const startBtn = document.getElementById("startBtn");
 const restartBtn = document.getElementById("restartBtn");
 
@@ -47,6 +50,21 @@ const keys = {
 let bulletSpawnRate = 0.02;
 let bulletSpeed = 2;
 let maxBullets = 50;
+
+// Personal best functions
+function loadPersonalBest() {
+  const saved = localStorage.getItem("bulletDodgerPersonalBest");
+  personalBest = saved ? parseInt(saved) : 0;
+  updatePersonalBestDisplay();
+}
+
+function savePersonalBest() {
+  localStorage.setItem("bulletDodgerPersonalBest", personalBest.toString());
+}
+
+function updatePersonalBestDisplay() {
+  personalBestElement.textContent = `Best: ${personalBest}`;
+}
 
 // Event listeners
 document.addEventListener("keydown", (e) => {
@@ -564,6 +582,14 @@ function gameOver() {
   finalScoreElement.textContent = score;
   finalTimeElement.textContent = `${survivalTime.toFixed(1)}s`;
 
+  // Check and update personal best
+  if (score > personalBest) {
+    personalBest = score;
+    savePersonalBest();
+    updatePersonalBestDisplay();
+  }
+  gameOverBestElement.textContent = personalBest;
+
   // Create explosion particles
   for (let i = 0; i < 20; i++) {
     particles.push(new Particle(player.x, player.y, "#ff4444"));
@@ -573,4 +599,5 @@ function gameOver() {
 }
 
 // Start the game loop
+loadPersonalBest();
 gameLoop();
