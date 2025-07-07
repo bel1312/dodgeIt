@@ -81,9 +81,12 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     // Handle both WASD and arrow keys properly
     if (e.code === "KeyW" || e.code === "ArrowUp") keys.w = keys.ArrowUp = true;
-    if (e.code === "KeyS" || e.code === "ArrowDown") keys.s = keys.ArrowDown = true;
-    if (e.code === "KeyA" || e.code === "ArrowLeft") keys.a = keys.ArrowLeft = true;
-    if (e.code === "KeyD" || e.code === "ArrowRight") keys.d = keys.ArrowRight = true;
+    if (e.code === "KeyS" || e.code === "ArrowDown")
+      keys.s = keys.ArrowDown = true;
+    if (e.code === "KeyA" || e.code === "ArrowLeft")
+      keys.a = keys.ArrowLeft = true;
+    if (e.code === "KeyD" || e.code === "ArrowRight")
+      keys.d = keys.ArrowRight = true;
   }
 });
 
@@ -100,10 +103,14 @@ document.addEventListener("keyup", (e) => {
   ) {
     e.preventDefault();
     // Handle both WASD and arrow keys properly
-    if (e.code === "KeyW" || e.code === "ArrowUp") keys.w = keys.ArrowUp = false;
-    if (e.code === "KeyS" || e.code === "ArrowDown") keys.s = keys.ArrowDown = false;
-    if (e.code === "KeyA" || e.code === "ArrowLeft") keys.a = keys.ArrowLeft = false;
-    if (e.code === "KeyD" || e.code === "ArrowRight") keys.d = keys.ArrowRight = false;
+    if (e.code === "KeyW" || e.code === "ArrowUp")
+      keys.w = keys.ArrowUp = false;
+    if (e.code === "KeyS" || e.code === "ArrowDown")
+      keys.s = keys.ArrowDown = false;
+    if (e.code === "KeyA" || e.code === "ArrowLeft")
+      keys.a = keys.ArrowLeft = false;
+    if (e.code === "KeyD" || e.code === "ArrowRight")
+      keys.d = keys.ArrowRight = false;
   }
 });
 
@@ -150,14 +157,14 @@ class Bullet {
     } else {
       this.color = `hsl(${Math.random() * 60 + 300}, 100%, 60%)`;
     }
-    
+
     this.trail = [];
   }
 
   generateAsteroidShape() {
     const vertices = [];
     const numVertices = 8 + Math.floor(Math.random() * 4); // 8-11 vertices
-    
+
     for (let i = 0; i < numVertices; i++) {
       const angle = (i / numVertices) * Math.PI * 2;
       const radiusVariation = 0.7 + Math.random() * 0.6; // Random radius between 0.7-1.3
@@ -165,7 +172,7 @@ class Bullet {
       const y = Math.sin(angle) * this.radius * radiusVariation;
       vertices.push({ x, y });
     }
-    
+
     return vertices;
   }
 
@@ -177,7 +184,7 @@ class Bullet {
 
     this.x += this.vx;
     this.y += this.vy;
-    
+
     // Rotate asteroids
     if (this.isAsteroid) {
       this.rotation += this.rotationSpeed;
@@ -236,7 +243,7 @@ class Bullet {
       ctx.globalAlpha = alpha * 0.3;
       const trailX = this.trail[i].x - this.x;
       const trailY = this.trail[i].y - this.y;
-      
+
       ctx.fillStyle = this.color;
       ctx.beginPath();
       ctx.arc(trailX, trailY, this.radius * alpha * 0.8, 0, Math.PI * 2);
@@ -249,14 +256,14 @@ class Bullet {
     ctx.fillStyle = this.color;
     ctx.strokeStyle = `hsl(${Math.random() * 30 + 15}, 80%, 25%)`;
     ctx.lineWidth = 2;
-    
+
     ctx.beginPath();
     ctx.moveTo(this.asteroidVertices[0].x, this.asteroidVertices[0].y);
-    
+
     for (let i = 1; i < this.asteroidVertices.length; i++) {
       ctx.lineTo(this.asteroidVertices[i].x, this.asteroidVertices[i].y);
     }
-    
+
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -267,7 +274,7 @@ class Bullet {
       const x = (Math.random() - 0.5) * this.radius * 0.8;
       const y = (Math.random() - 0.5) * this.radius * 0.8;
       const size = Math.random() * 2 + 1;
-      
+
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
@@ -277,7 +284,7 @@ class Bullet {
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 15;
     ctx.globalAlpha = 0.3;
-    
+
     ctx.beginPath();
     ctx.moveTo(this.asteroidVertices[0].x, this.asteroidVertices[0].y);
     for (let i = 1; i < this.asteroidVertices.length; i++) {
@@ -285,7 +292,7 @@ class Bullet {
     }
     ctx.closePath();
     ctx.fill();
-    
+
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
