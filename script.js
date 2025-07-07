@@ -1,5 +1,3 @@
-import "./style.css";
-
 // Game state
 let gameState = "menu"; // 'menu', 'playing', 'gameOver'
 let score = 0;
