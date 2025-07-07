@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bullet Dodger - Survival Game</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="gameContainer">
+        <div id="ui">
+          <div id="score">Score: 0</div>
+          <div id="timer">Time: 0.0s</div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameOver" class="hidden">
+          <h2>Game Over!</h2>
+          <p>Final Score: <span id="finalScore">0</span></p>
+          <p>Survival Time: <span id="finalTime">0.0s</span></p>
+          <button id="restartBtn">Play Again</button>
+        </div>
+        <div id="instructions">
+          <h3>How to Play</h3>
+          <p>• Use WASD or Arrow Keys to move</p>
+          <p>• Dodge the bullets coming from all directions</p>
+          <p>• Survive as long as possible to increase your score</p>
+          <p>• Difficulty increases over time</p>
+          <button id="startBtn">Start Game</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>l>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
