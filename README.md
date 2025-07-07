@@ -2,6 +2,8 @@
 
 An exciting bullet dodging survival game built with HTML5 Canvas and JavaScript. Test your reflexes as you dodge bullets coming from all directions while the difficulty increases over time!
 
+🎮 **[Play the Game Live!](https://quangtinator.github.io/dodgeIt/)**
+
 ## 🎯 Game Features
 
 - **Intense Bullet Dodging**: Navigate your player model through waves of bullets coming from all directions
