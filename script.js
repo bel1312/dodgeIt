@@ -5,6 +5,8 @@ let personalBest = 0;
 let startTime = 0;
 let currentTime = 0;
 let animationId = null;
+let lastBossTime = 0;
+let bossActive = false;
 
 // Canvas and context
 const canvas = document.getElementById("gameCanvas");
@@ -14,6 +16,7 @@ const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
 const timerElement = document.getElementById("timer");
 const personalBestElement = document.getElementById("personalBest");
+const bossWarningElement = document.getElementById("bossWarning");
 const gameOverElement = document.getElementById("gameOver");
 const instructionsElement = document.getElementById("instructions");
 const finalScoreElement = document.getElementById("finalScore");
@@ -33,6 +36,7 @@ const player = {
 
 const bullets = [];
 const particles = [];
+let boss = null;
 
 // Input handling
 const keys = {
@@ -423,6 +427,56 @@ function updateBullets() {
   }
 }
 
+function updateBoss() {
+  const survivalTime = (currentTime - startTime) / 1000;
+
+  // Simple boss spawning every 60 seconds
+  const timeSinceLastBoss = survivalTime - lastBossTime;
+
+  // Show warning 5 seconds before boss spawns
+  if (!bossActive && timeSinceLastBoss >= 55 && timeSinceLastBoss < 60) {
+    bossWarningElement.classList.remove("hidden");
+  } else {
+    bossWarningElement.classList.add("hidden");
+  }
+
+  // Spawn boss every 60 seconds
+  if (!bossActive && timeSinceLastBoss >= 60) {
+    boss = new Boss();
+    bossActive = true;
+    lastBossTime = survivalTime;
+    bossWarningElement.classList.add("hidden");
+
+    // Add warning particles
+    for (let i = 0; i < 50; i++) {
+      particles.push(
+        new Particle(
+          Math.random() * canvas.width,
+          Math.random() * canvas.height,
+          "#ff0066"
+        )
+      );
+    }
+  }
+
+  // Update boss if active
+  if (boss && bossActive) {
+    boss.update();
+
+    // Safety check: if boss is null after update, clean up
+    if (!boss) {
+      bossActive = false;
+      return;
+    }
+
+    // Check collision with player
+    if (boss.checkCollision(player.x, player.y, player.radius)) {
+      gameOver();
+      return;
+    }
+  }
+}
+
 function updateParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     const particle = particles[i];
@@ -437,14 +491,14 @@ function updateParticles() {
 function increaseDifficulty() {
   const survivalTime = (currentTime - startTime) / 1000;
 
-  // Increase bullet spawn rate every 5 seconds
-  bulletSpawnRate = Math.min(0.08, 0.02 + (survivalTime / 5) * 0.01);
+  // Increase bullet spawn rate every 8 seconds (slowed down from 5)
+  bulletSpawnRate = Math.min(0.06, 0.02 + (survivalTime / 8) * 0.008);
 
-  // Increase bullet speed every 10 seconds
-  bulletSpeed = Math.min(4, 2 + (survivalTime / 10) * 0.5);
+  // Increase bullet speed every 15 seconds (slowed down from 10)
+  bulletSpeed = Math.min(3.5, 2 + (survivalTime / 15) * 0.4);
 
-  // Increase max bullets every 15 seconds
-  maxBullets = Math.min(100, 50 + Math.floor(survivalTime / 15) * 10);
+  // Increase max bullets every 20 seconds (slowed down from 15)
+  maxBullets = Math.min(80, 50 + Math.floor(survivalTime / 20) * 8);
 
   // Calculate score based on survival time and difficulty
   score = Math.floor(survivalTime * 10 + (survivalTime * survivalTime) / 10);
@@ -502,6 +556,11 @@ function render() {
   bullets.forEach((bullet) => bullet.draw());
   particles.forEach((particle) => particle.draw());
 
+  // Draw boss if active
+  if (boss && bossActive) {
+    boss.draw();
+  }
+
   // Add screen edge glow effect
   const gradient = ctx.createRadialGradient(
     canvas.width / 2,
@@ -529,11 +588,13 @@ function gameLoop() {
   if (gameState === "playing") {
     updatePlayer();
     updateBullets();
+    updateBoss();
     updateParticles();
     increaseDifficulty();
 
-    // Spawn bullets
-    if (Math.random() < bulletSpawnRate) {
+    // Spawn bullets (reduced when boss is active)
+    const spawnRate = bossActive ? bulletSpawnRate * 0.3 : bulletSpawnRate;
+    if (Math.random() < spawnRate) {
       spawnBullet();
     }
 
@@ -568,6 +629,11 @@ function startGame() {
   bulletSpeed = 2;
   maxBullets = 50;
 
+  // Reset boss state
+  boss = null;
+  bossActive = false;
+  lastBossTime = 0;
+
   // Reset player position
   player.x = canvas.width / 2;
   player.y = canvas.height / 2;
@@ -575,6 +641,7 @@ function startGame() {
   // Hide menus
   instructionsElement.classList.add("hidden");
   gameOverElement.classList.add("hidden");
+  bossWarningElement.classList.add("hidden");
 
   // Start game loop if not already running
   if (!animationId) {
@@ -603,6 +670,250 @@ function gameOver() {
   }
 
   gameOverElement.classList.remove("hidden");
+}
+
+// Boss class
+class Boss {
+  constructor() {
+    this.radius = 40; // Reduced from 60
+    this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+    this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
+    this.health = 1; // Boss has 1 health (touching kills player)
+    this.speed = 1.5;
+    this.color = "#ff0066";
+    this.glowColor = "#ff3388";
+
+    // Movement pattern
+    this.targetX = this.x;
+    this.targetY = this.y;
+    this.moveTimer = 0;
+    this.moveInterval = 2000; // Change direction every 2 seconds
+
+    // Shooting pattern
+    this.shootTimer = 0;
+    this.shootInterval = 800; // Shoot every 0.8 seconds
+    this.burstCount = 0;
+    this.maxBursts = 5;
+
+    // Visual effects
+    this.pulsePhase = 0;
+    this.tentacles = [];
+    this.initializeTentacles();
+
+    // Spawn timer
+    this.spawnTime = Date.now();
+    this.duration = 10000; // 10 seconds
+  }
+
+  initializeTentacles() {
+    for (let i = 0; i < 8; i++) {
+      this.tentacles.push({
+        angle: (i / 8) * Math.PI * 2,
+        length: this.radius * 0.8,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  update() {
+    const currentTime = Date.now();
+
+    // Check if boss duration is over
+    if (currentTime - this.spawnTime > this.duration) {
+      boss = null;
+      bossActive = false;
+      return;
+    }
+
+    // Update movement
+    this.updateMovement();
+
+    // Update shooting
+    this.updateShooting();
+
+    // Update visual effects
+    this.pulsePhase += 0.1;
+    this.tentacles.forEach((tentacle) => {
+      tentacle.phase += 0.05;
+    });
+  }
+
+  updateMovement() {
+    this.moveTimer += 16; // Assuming 60fps
+
+    if (this.moveTimer >= this.moveInterval) {
+      // Pick new random target
+      this.targetX =
+        Math.random() * (canvas.width - this.radius * 2) + this.radius;
+      this.targetY =
+        Math.random() * (canvas.height - this.radius * 2) + this.radius;
+      this.moveTimer = 0;
+    }
+
+    // Move towards target
+    const dx = this.targetX - this.x;
+    const dy = this.targetY - this.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 5 && distance > 0) {
+      // Added safety check
+      this.x += (dx / distance) * this.speed;
+      this.y += (dy / distance) * this.speed;
+    }
+
+    // Keep boss in bounds
+    this.x = Math.max(
+      this.radius,
+      Math.min(canvas.width - this.radius, this.x)
+    );
+    this.y = Math.max(
+      this.radius,
+      Math.min(canvas.height - this.radius, this.y)
+    );
+  }
+
+  updateShooting() {
+    this.shootTimer += 16;
+
+    if (this.shootTimer >= this.shootInterval) {
+      this.shootBurst();
+      this.shootTimer = 0;
+      this.burstCount++;
+
+      if (this.burstCount >= this.maxBursts) {
+        this.burstCount = 0;
+        this.shootInterval = 800 + Math.random() * 1200; // Vary shoot interval
+      }
+    }
+  }
+
+  shootBurst() {
+    const numBullets = 8; // Shoot in 8 directions
+    const speed = bulletSpeed * 1.3; // Reduced from 1.8 to 1.3
+
+    for (let i = 0; i < numBullets; i++) {
+      const angle = (i / numBullets) * Math.PI * 2;
+      const bulletX = this.x + Math.cos(angle) * this.radius;
+      const bulletY = this.y + Math.sin(angle) * this.radius;
+      const targetX = this.x + Math.cos(angle) * 1000;
+      const targetY = this.y + Math.sin(angle) * 1000;
+
+      bullets.push(
+        new Bullet(bulletX, bulletY, targetX, targetY, speed, false)
+      );
+    }
+
+    // Add some targeted bullets at player
+    for (let i = 0; i < 3; i++) {
+      const spread = (Math.random() - 0.5) * 0.5; // Small spread
+      const bulletX = this.x;
+      const bulletY = this.y;
+      const targetX = player.x + spread * 100;
+      const targetY = player.y + spread * 100;
+
+      bullets.push(
+        new Bullet(bulletX, bulletY, targetX, targetY, speed * 1.1, false)
+      ); // Reduced from 1.2 to 1.1
+    }
+  }
+
+  draw() {
+    ctx.save();
+
+    // Draw tentacles/appendages
+    this.drawTentacles();
+
+    // Draw main body with pulsing effect
+    const pulseSize = Math.sin(this.pulsePhase) * 5 + this.radius;
+
+    // Outer glow
+    ctx.shadowColor = this.glowColor;
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = this.glowColor;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, pulseSize + 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main body
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner details
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, pulseSize * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye-like details
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2 + this.pulsePhase;
+      const eyeX = this.x + Math.cos(angle) * pulseSize * 0.5;
+      const eyeY = this.y + Math.sin(angle) * pulseSize * 0.5;
+      ctx.beginPath();
+      ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  drawTentacles() {
+    this.tentacles.forEach((tentacle) => {
+      const waveOffset = Math.sin(tentacle.phase) * 20;
+      const endX =
+        this.x + Math.cos(tentacle.angle) * (tentacle.length + waveOffset);
+      const endY =
+        this.y + Math.sin(tentacle.angle) * (tentacle.length + waveOffset);
+
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 8;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.7;
+
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+
+      // Create wavy tentacle
+      const segments = 5;
+      for (let i = 1; i <= segments; i++) {
+        const progress = i / segments;
+        const segmentX = this.x + (endX - this.x) * progress;
+        const segmentY = this.y + (endY - this.y) * progress;
+        const wave =
+          Math.sin(tentacle.phase + progress * Math.PI * 2) *
+          15 *
+          (1 - progress);
+
+        const perpX =
+          -(endY - this.y) /
+          Math.sqrt((endX - this.x) ** 2 + (endY - this.y) ** 2);
+        const perpY =
+          (endX - this.x) /
+          Math.sqrt((endX - this.x) ** 2 + (endY - this.y) ** 2);
+
+        ctx.lineTo(segmentX + perpX * wave, segmentY + perpY * wave);
+      }
+
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  checkCollision(otherX, otherY, otherRadius) {
+    const dx = this.x - otherX;
+    const dy = this.y - otherY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < this.radius + otherRadius;
+  }
 }
 
 // Start the game loop
