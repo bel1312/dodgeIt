@@ -4,6 +4,8 @@ let score = 0;
 let personalBest = 0;
 let startTime = 0;
 let currentTime = 0;
+let pausedTime = 0;
+let isGamePaused = false;
 let animationId = null;
 let lastBossTime = 0;
 let bossActive = false;
@@ -36,7 +38,15 @@ const player = {
 
 const bullets = [];
 const particles = [];
+const buffs = [];
 let boss = null;
+
+// Buff system
+let activeBuffs = {
+  shield: { active: false, endTime: 0 },
+  speed: { active: false, endTime: 0 },
+  size: { active: false, endTime: 0 }
+};
 
 // Input handling
 const keys = {
@@ -421,6 +431,17 @@ function updateBullets() {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < bullet.radius + player.radius) {
+      // Check if player has shield buff
+      if (activeBuffs.shield.active) {
+        // Destroy bullet but don't kill player
+        bullets.splice(i, 1);
+        // Add shield effect particles
+        for (let j = 0; j < 8; j++) {
+          particles.push(new Particle(bullet.x, bullet.y, "#00aaff"));
+        }
+        continue;
+      }
+      
       gameOver();
       return;
     }
@@ -505,12 +526,25 @@ function increaseDifficulty() {
 }
 
 function drawPlayer() {
-  // Player glow
-  ctx.shadowColor = player.color;
+  // Draw shield effect if active
+  if (activeBuffs.shield.active) {
+    ctx.shadowColor = "#00aaff";
+    ctx.shadowBlur = 25;
+    ctx.strokeStyle = "#00aaff";
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius + 8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Player glow (different color if speed buff active)
+  ctx.shadowColor = activeBuffs.speed.active ? "#ffaa00" : player.color;
   ctx.shadowBlur = 20;
 
-  // Player body
-  ctx.fillStyle = player.color;
+  // Player body (different color if size buff active)
+  ctx.fillStyle = activeBuffs.size.active ? "#aa00ff" : player.color;
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
   ctx.fill();
@@ -555,6 +589,7 @@ function render() {
 
   bullets.forEach((bullet) => bullet.draw());
   particles.forEach((particle) => particle.draw());
+  buffs.forEach((buff) => buff.draw());
 
   // Draw boss if active
   if (boss && bossActive) {
@@ -585,12 +620,13 @@ function updateUI() {
 function gameLoop() {
   currentTime = Date.now();
 
-  if (gameState === "playing") {
+  if (gameState === "playing" && !isGamePaused) {
     updatePlayer();
     updateBullets();
     updateBoss();
     updateParticles();
     increaseDifficulty();
+    updateBuffs();
 
     // Spawn bullets (reduced when boss is active)
     const spawnRate = bossActive ? bulletSpawnRate * 0.3 : bulletSpawnRate;
@@ -621,10 +657,15 @@ function startGame() {
   score = 0;
   startTime = Date.now();
   currentTime = startTime;
+  
+  // Reset pause state
+  isGamePaused = false;
+  pausedTime = 0;
 
   // Reset game objects
   bullets.length = 0;
   particles.length = 0;
+  buffs.length = 0;
   bulletSpawnRate = 0.02;
   bulletSpeed = 2;
   maxBullets = 50;
@@ -633,6 +674,15 @@ function startGame() {
   boss = null;
   bossActive = false;
   lastBossTime = 0;
+
+  // Reset buffs
+  activeBuffs.shield.active = false;
+  activeBuffs.speed.active = false;
+  activeBuffs.size.active = false;
+
+  // Reset player to default state
+  player.speed = 5;
+  player.radius = 15;
 
   // Reset player position
   player.x = canvas.width / 2;
@@ -720,6 +770,8 @@ class Boss {
 
     // Check if boss duration is over
     if (currentTime - this.spawnTime > this.duration) {
+      // Spawn a random buff when boss dies
+      this.spawnBuff();
       boss = null;
       bossActive = false;
       return;
@@ -736,6 +788,19 @@ class Boss {
     this.tentacles.forEach((tentacle) => {
       tentacle.phase += 0.05;
     });
+  }
+  
+  spawnBuff() {
+    const buffTypes = ['shield', 'speed', 'size'];
+    const randomType = buffTypes[Math.floor(Math.random() * buffTypes.length)];
+    
+    // Spawn buff at boss location
+    buffs.push(new Buff(this.x, this.y, randomType));
+    
+    // Add some celebration particles
+    for (let i = 0; i < 30; i++) {
+      particles.push(new Particle(this.x, this.y, "#ffff00"));
+    }
   }
 
   updateMovement() {
@@ -916,6 +981,273 @@ class Boss {
   }
 }
 
+// Buff class
+class Buff {
+  constructor(x, y, type) {
+    this.x = x;
+    this.y = y;
+    this.radius = 20;
+    this.type = type; // 'shield', 'speed', 'size'
+    this.pulsePhase = 0;
+    this.floatPhase = 0;
+    this.spawnTime = Date.now();
+    this.duration = 15000; // 15 seconds before disappearing
+    
+    // Set buff properties based on type
+    switch (type) {
+      case 'shield':
+        this.color = "#00aaff";
+        this.glowColor = "#66ccff";
+        this.symbol = "🛡️";
+        break;
+      case 'speed':
+        this.color = "#ffaa00";
+        this.glowColor = "#ffcc66";
+        this.symbol = "⚡";
+        break;
+      case 'size':
+        this.color = "#aa00ff";
+        this.glowColor = "#cc66ff";
+        this.symbol = "🔻";
+        break;
+    }
+  }
+  
+  update() {
+    // Check if buff should disappear
+    if (Date.now() - this.spawnTime > this.duration) {
+      return false; // Signal for removal
+    }
+    
+    // Update visual effects
+    this.pulsePhase += 0.15;
+    this.floatPhase += 0.08;
+    
+    // Floating motion
+    this.y += Math.sin(this.floatPhase) * 0.5;
+    
+    return true; // Continue existing
+  }
+  
+  draw() {
+    ctx.save();
+    
+    // Floating offset
+    const floatOffset = Math.sin(this.floatPhase) * 3;
+    const drawY = this.y + floatOffset;
+    
+    // Pulsing size
+    const pulseSize = this.radius + Math.sin(this.pulsePhase) * 3;
+    
+    // Outer glow
+    ctx.shadowColor = this.glowColor;
+    ctx.shadowBlur = 25;
+    ctx.fillStyle = this.glowColor;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(this.x, drawY, pulseSize + 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Main buff circle
+    ctx.globalAlpha = 0.8;
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, drawY, pulseSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Inner highlight
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(this.x, drawY, pulseSize * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Symbol/text
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#ffffff";
+    // Draw different symbols for each buff type
+    switch (this.type) {
+      case 'shield':
+        // Draw shield symbol (diamond shape)
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y - 8);
+        ctx.lineTo(this.x + 6, this.y);
+        ctx.lineTo(this.x, this.y + 8);
+        ctx.lineTo(this.x - 6, this.y);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case 'speed':
+        // Draw speed symbol (arrow)
+        ctx.beginPath();
+        ctx.moveTo(this.x - 6, this.y - 4);
+        ctx.lineTo(this.x + 6, this.y);
+        ctx.lineTo(this.x - 6, this.y + 4);
+        ctx.lineTo(this.x - 2, this.y);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case 'size':
+        // Draw size symbol (small circle)
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+    }
+    
+    ctx.restore();
+  }
+  
+  checkCollision(otherX, otherY, otherRadius) {
+    const dx = this.x - otherX;
+    const dy = this.y - otherY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < this.radius + otherRadius;
+  }
+}
+
+function updateBuffs() {
+  // Update active buff timers
+  const currentTime = Date.now();
+  
+  if (activeBuffs.shield.active && currentTime > activeBuffs.shield.endTime) {
+    activeBuffs.shield.active = false;
+  }
+  
+  if (activeBuffs.speed.active && currentTime > activeBuffs.speed.endTime) {
+    activeBuffs.speed.active = false;
+    player.speed = 5; // Reset to normal speed
+  }
+  
+  if (activeBuffs.size.active && currentTime > activeBuffs.size.endTime) {
+    activeBuffs.size.active = false;
+    player.radius = 15; // Reset to normal size
+  }
+  
+  // Update buff pickups
+  for (let i = buffs.length - 1; i >= 0; i--) {
+    const buff = buffs[i];
+    
+    if (!buff.update()) {
+      // Buff expired
+      buffs.splice(i, 1);
+      continue;
+    }
+    
+    // Check collision with player
+    if (buff.checkCollision(player.x, player.y, player.radius)) {
+      activateBuff(buff.type);
+      buffs.splice(i, 1);
+      
+      // Add pickup particles
+      for (let j = 0; j < 15; j++) {
+        particles.push(new Particle(buff.x, buff.y, buff.color));
+      }
+    }
+  }
+}
+
+function activateBuff(buffType) {
+  const currentTime = Date.now();
+  const buffDuration = 30000; // 30 seconds
+  
+  switch (buffType) {
+    case 'shield':
+      activeBuffs.shield.active = true;
+      activeBuffs.shield.endTime = currentTime + buffDuration;
+      break;
+      
+    case 'speed':
+      activeBuffs.speed.active = true;
+      activeBuffs.speed.endTime = currentTime + buffDuration;
+      player.speed = 7; // Increased speed
+      break;
+      
+    case 'size':
+      activeBuffs.size.active = true;
+      activeBuffs.size.endTime = currentTime + buffDuration;
+      player.radius = 12; // Reduced size (20% smaller)
+      break;
+  }
+}
+
+// Color picker functionality
+function initializeColorPicker() {
+  const colorOptions = document.querySelectorAll('.color-option');
+  
+  colorOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      // Remove selected class from all options
+      colorOptions.forEach(opt => opt.classList.remove('selected'));
+      
+      // Add selected class to clicked option
+      this.classList.add('selected');
+      
+      // Update player color
+      const newColor = this.getAttribute('data-color');
+      player.color = newColor;
+      
+      // Save color preference
+      localStorage.setItem('bulletDodgerPlayerColor', newColor);
+    });
+  });
+}
+
+// Load saved player color
+function loadPlayerColor() {
+  const savedColor = localStorage.getItem('bulletDodgerPlayerColor');
+  if (savedColor) {
+    player.color = savedColor;
+    
+    // Update selected color option
+    const colorOptions = document.querySelectorAll('.color-option');
+    colorOptions.forEach(option => {
+      option.classList.remove('selected');
+      if (option.getAttribute('data-color') === savedColor) {
+        option.classList.add('selected');
+      }
+    });
+  }
+}
+
+// Pause game when tab loses focus
+document.addEventListener("visibilitychange", () => {
+  if (gameState === "playing") {
+    if (document.hidden) {
+      // Game lost focus - pause
+      isGamePaused = true;
+      pausedTime = Date.now();
+    } else {
+      // Game regained focus - resume
+      if (isGamePaused) {
+        const pauseDuration = Date.now() - pausedTime;
+        startTime += pauseDuration; // Adjust start time to account for pause
+        isGamePaused = false;
+      }
+    }
+  }
+});
+
+// Also handle window focus/blur events as backup
+window.addEventListener("blur", () => {
+  if (gameState === "playing" && !isGamePaused) {
+    isGamePaused = true;
+    pausedTime = Date.now();
+  }
+});
+
+window.addEventListener("focus", () => {
+  if (gameState === "playing" && isGamePaused) {
+    const pauseDuration = Date.now() - pausedTime;
+    startTime += pauseDuration;
+    isGamePaused = false;
+  }
+});
+
 // Start the game loop
 loadPersonalBest();
+loadPlayerColor();
+initializeColorPicker();
 gameLoop();
